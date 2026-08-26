@@ -880,11 +880,19 @@ form.addEventListener("submit", function(event) {
         }
     }
 
-    fetch(urlGoogleScript, { method: "POST", body: formData, mode: "no-cors" })
-    .then(() => {
-        mostrarAlertaCustomizado("Cadastro realizado com sucesso!", "Sucesso!");
-        form.reset();
-        atualizarEstadoCamposEscola();
+    fetch(urlGoogleScript, { 
+        method: "POST", 
+        body: formData 
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.result === "success") {
+            mostrarAlertaCustomizado("Nome incluido na Lista de Espera com sucesso!", "Sucesso!");
+            form.reset();
+            atualizarEstadoCamposEscola();
+        } else {
+            mostrarAlertaCustomizado("Erro ao salvar: " + (data.message || "Erro desconhecido"), "Erro");
+        }
     })
     .catch(error => {
         console.error("Erro:", error);
