@@ -442,8 +442,6 @@
     </div>
 </div>
 
-<!-- JAVASCRIPT OTIMIZADO -->
-<!-- JAVASCRIPT OTIMIZADO CORRIGIDO -->
 <script>
 let EscolasMuniCSV = [];
 
@@ -525,12 +523,14 @@ document.getElementById("data_nascimento").addEventListener("input", function (e
     e.target.value = valor;
 });
 
+// MÁSCARA DE TELEFONE ATUALIZADA
 document.getElementById("telefone").addEventListener("input", function (e) {
     let valor = e.target.value.replace(/\D/g, "");
     if (valor.length > 11) valor = valor.substring(0, 11);
+    
     if (valor.length > 10) {
         valor = "(" + valor.substring(0, 2) + ") " + valor.substring(2, 7) + "-" + valor.substring(7, 11);
-    } else if (valor.length > 6) {
+    } else if (valor.length === 10) {
         valor = "(" + valor.substring(0, 2) + ") " + valor.substring(2, 6) + "-" + valor.substring(6, 10);
     } else if (valor.length > 2) {
         valor = "(" + valor.substring(0, 2) + ") " + valor.substring(2);
@@ -540,36 +540,21 @@ document.getElementById("telefone").addEventListener("input", function (e) {
     e.target.value = valor;
 });
 
-// Validação no campo de Data de Nascimento (Blur)
 document.getElementById("data_nascimento").addEventListener("blur", function() {
     let dataStr = this.value;
-    
     if (dataStr.length > 0 && dataStr.length < 10) {
         mostrarAlertaCustomizado("Por favor, digite a data completa no formato DD/MM/AAAA.", "Atenção");
         this.focus();
         return;
     }
-
     if (dataStr.length === 10) {
         let partes = dataStr.split("/");
         let dia = parseInt(partes[0], 10);
         let mes = parseInt(partes[1], 10) - 1;
         let ano = parseInt(partes[2], 10);
 
-        if (partes[2].length !== 4) {
-            mostrarAlertaCustomizado("O ano deve conter 4 dígitos (ex: 2000).", "Atenção");
-            this.focus();
-            return;
-        }
-
         let dataNasc = new Date(ano, mes, dia);
         let hoje = new Date();
-
-        if (dataNasc.getDate() !== dia || dataNasc.getMonth() !== mes || dataNasc.getFullYear() !== ano) {
-            mostrarAlertaCustomizado("A data de nascimento informada é inválida.", "Atenção");
-            this.focus();
-            return;
-        }
 
         if (dataNasc > hoje) {
             mostrarAlertaCustomizado("A data de nascimento não pode ser no futuro.", "Atenção");
@@ -577,7 +562,6 @@ document.getElementById("data_nascimento").addEventListener("blur", function() {
             return;
         }
 
-        // Validação de idade mínima (18 anos)
         let idade = hoje.getFullYear() - dataNasc.getFullYear();
         let m = hoje.getMonth() - dataNasc.getMonth();
         if (m < 0 || (m === 0 && hoje.getDate() < dataNasc.getDate())) {
@@ -585,14 +569,7 @@ document.getElementById("data_nascimento").addEventListener("blur", function() {
         }
 
         if (idade < 18) {
-            mostrarAlertaCustomizado("O curso é restrito para maiores de 18 anos. Menores de idade não podem se cadastrar.", "Atenção");
-            this.focus();
-            return;
-        }
-
-        let anoMinimo = hoje.getFullYear() - 110;
-        if (ano < anoMinimo) {
-            mostrarAlertaCustomizado("O ano de nascimento indica uma idade superior a 110 anos.", "Atenção");
+            mostrarAlertaCustomizado("O curso é restrito para maiores de 18 anos.", "Atenção");
             this.focus();
         }
     }
@@ -605,39 +582,23 @@ selectUF.addEventListener("change", async function () {
     selectMunicipio.innerHTML = '<option value="">Carregando municípios...</option>';
     selectMunicipio.disabled = true;
     
-    const perfilSelecionado = document.querySelector('input[name="tipo_cursista"]:checked')?.value;
-    
-    if (perfilSelecionado === "Profissional da Educação") {
-        selectEscola.innerHTML = '<option value="">Selecione primeiro o município</option>';
-        selectEscola.disabled = true;
-        campoInep.value = "";
-        campoInep.readOnly = true;
-    }
-
     const csvPromise = new Promise((resolve) => {
         const urlEstado = CSV_POR_UF[uf];
-        if (!urlEstado) {
-            resolve([]);
-            return;
-        }
+        if (!urlEstado) { resolve([]); return; }
         Papa.parse(urlEstado, {
-            download: true,
-            header: true,
-            skipEmptyLines: true,
+            download: true, header: true, skipEmptyLines: true,
             complete: (res) => resolve(res.data),
             error: (err) => { console.error("Erro CSV:", err); resolve([]); }
         });
     });
 
     const ibgePromise = fetch(`https://servicodados.ibge.gov.br/api/v1/localidades/estados/${uf}/municipios?orderBy=nome`)
-        .then(res => { if (!res.ok) throw new Error("Erro IBGE"); return res.json(); })
-        .catch(err => { console.error("Erro IBGE:", err); return []; });
+        .then(res => res.json()).catch(() => []);
 
     const [dadosCsv, municipios] = await Promise.all([csvPromise, ibgePromise]);
     EscolasMuniCSV = dadosCsv;
 
     selectMunicipio.innerHTML = '<option value="">Selecione um município</option>';
-    
     if (municipios && municipios.length > 0) {
         municipios.forEach(m => {
             const option = document.createElement("option");
@@ -647,8 +608,6 @@ selectUF.addEventListener("change", async function () {
             selectMunicipio.appendChild(option);
         });
         selectMunicipio.disabled = false;
-    } else {
-        selectMunicipio.innerHTML = '<option value="">Erro ao carregar municípios.</option>';
     }
 });
 
@@ -657,9 +616,7 @@ selectMunicipio.addEventListener("change", function() {
     const optionSelecionada = selectMunicipio.options[selectMunicipio.selectedIndex];
     const codigoIbge = optionSelecionada?.dataset?.codigoIbge || ""; 
     
-    const inputCodMun = document.getElementById("codigo_municipio");
-    if (inputCodMun) inputCodMun.value = codigoIbge;    
-
+    document.getElementById("codigo_municipio").value = codigoIbge;    
     if (perfilSelecionado !== "Profissional da Educação") return;
 
     selectEscola.innerHTML = '<option value="">Selecione uma escola</option>';
@@ -671,115 +628,53 @@ selectMunicipio.addEventListener("change", function() {
 
     const escolasFiltradas = EscolasMuniCSV.filter(item => {
         const nomeEscola = item["escola_onde_atua"] || item["Escola"] || "";
-        const temEscola = !!nomeEscola.trim();
-        
         const municipioCSV = (item["Município"] || item["Municipio"] || item["municipio"] || "").normalize("NFD").replace(/[\u0300-\u036f]/g,"").trim().toUpperCase();
         const codMunCSV = String(item["codigo_municipio"] || item["Código Municipio"] || "").trim();
-
-        const bateuMunicipio = (municipioCSV === municipioSelecionado) || (codMunCSV === codigoIbge) || (codMunCSV === codigoIbge6);
-
-        return temEscola && bateuMunicipio;
+        return !!nomeEscola.trim() && ((municipioCSV === municipioSelecionado) || (codMunCSV === codigoIbge) || (codMunCSV === codigoIbge6));
     });
 
     if (escolasFiltradas.length === 0) {
         selectEscola.innerHTML = '<option value="">Nenhuma escola encontrada</option>';
-        liberarDigitacaoManual();
+        campoInep.value = "";
+        campoInep.readOnly = false;
         return;
     }
-
-    escolasFiltradas.sort((a, b) => {
-        const nomeA = a["escola_onde_atua"] || a["Escola"] || "";
-        const nomeB = b["escola_onde_atua"] || b["Escola"] || "";
-        return nomeA.localeCompare(nomeB, "pt-BR");
-    });
 
     escolasFiltradas.forEach(item => {
         const option = document.createElement("option");
         const nomeEscola = item["escola_onde_atua"] || item["Escola"] || "";
-        
         let codigoInep = "";
         for (let chave in item) {
-            if (chave.toLowerCase().includes("inep")) {
-                codigoInep = item[chave];
-                break;
-            }
+            if (chave.toLowerCase().includes("inep")) { codigoInep = item[chave]; break; }
         }
-
         option.textContent = nomeEscola;
         option.value = nomeEscola;
         option.dataset.inep = codigoInep ? String(codigoInep).trim() : "";
         selectEscola.appendChild(option);
     });
-    
     selectEscola.disabled = false;
 });
 
 selectEscola.addEventListener("change", function() {
-    const opcaoSelecionada = this.options[this.selectedIndex];
-    const inepValor = opcaoSelecionada.dataset.inep || "";
-    
-    campoInep.value = inepValor;
+    campoInep.value = this.options[this.selectedIndex].dataset.inep || "";
     campoInep.readOnly = true;
 });
-
-function liberarDigitacaoManual() {
-    campoInep.value = "";
-    campoInep.readOnly = false;
-    campoInep.placeholder = "Digite o código INEP manualmente";
-    campoInep.focus();
-}
 
 function atualizarEstadoCamposEscola() {
     const perfilSelecionado = document.querySelector('input[name="tipo_cursista"]:checked');
     const tipo = perfilSelecionado ? perfilSelecionado.value : "";
-    
-    if (!tipo) {
-        selectUF.disabled = true;
-        selectMunicipio.disabled = true;
-        selectEscola.disabled = true;
-        campoInep.disabled = true;
-        return;
-    }
+    if (!tipo) return;
 
     selectUF.disabled = false;
-    selectUF.setAttribute("required", "required");
-
-    if (selectUF.value) {
-        selectMunicipio.disabled = false;
-    }
-
     if (tipo === "Profissional da Educação") {
-        selectEscola.setAttribute("required", "required");
-        campoInep.setAttribute("required", "required");
-        campoInep.disabled = false;
-
-        if (selectMunicipio.value) {
-            selectEscola.disabled = false;
-        } else {
-            selectEscola.disabled = true;
-            selectEscola.innerHTML = '<option value="">Selecione primeiro o município</option>';
-        }
+        selectEscola.disabled = !selectMunicipio.value;
     } else {
-        selectEscola.innerHTML = '<option value="">Não obrigatório para este perfil</option>';
-        selectEscola.value = "";
         selectEscola.disabled = true;
-        selectEscola.removeAttribute("required");
-
-        campoInep.value = "";
-        campoInep.readOnly = true;
         campoInep.disabled = true;
-        campoInep.removeAttribute("required");
-        campoInep.placeholder = "Preenchido automaticamente";
     }
 }
 
-radiosPerfil.forEach(radio => {
-    radio.addEventListener("change", () => {
-        atualizarEstadoCamposEscola();
-    });
-});
-
-document.addEventListener("DOMContentLoaded", atualizarEstadoCamposEscola);
+radiosPerfil.forEach(radio => radio.addEventListener("change", atualizarEstadoCamposEscola));
 
 form.addEventListener("submit", function(event) {
     event.preventDefault();
@@ -787,101 +682,53 @@ form.addEventListener("submit", function(event) {
     const email = document.getElementById("email").value.trim();
     const confirmEmail = document.getElementById("confirm_email").value.trim();
 
-    if (!validarEmail(email)) {
-        mostrarAlertaCustomizado("O e-mail principal informado é inválido.", "Atenção");
+    if (!validarEmail(email) || email !== confirmEmail) {
+        mostrarAlertaCustomizado("Os e-mails informados são inválidos ou não coincidem.", "Atenção");
         return;
     }
 
-    if (email !== confirmEmail) {
-        mostrarAlertaCustomizado("Os endereços de e-mail informados não coincidem.", "Atenção");
+    // VALIDAÇÃO DO TELEFONE NO SUBMIT
+    const telefoneValor = document.getElementById("telefone").value.replace(/\D/g, "");
+    const regexTelefone = /^\d{2}(9\d{8}|[2-8]\d{7})$/;
+
+    if (!regexTelefone.test(telefoneValor)) {
+        mostrarAlertaCustomizado("Telefone inválido. Se começar com 9 após o DDD, deve ter 9 dígitos. Caso contrário, deve ter 8 dígitos.", "Atenção");
+        document.getElementById("telefone").focus();
         return;
     }
 
-    // Validação de idade no Submit
-    const dataStr = document.getElementById("data_nascimento").value;
-    const partes = dataStr.split("/");
-    if (partes.length === 3) {
-        let dia = parseInt(partes[0], 10);
-        let mes = parseInt(partes[1], 10) - 1;
-        let ano = parseInt(partes[2], 10);
-        let dataNasc = new Date(ano, mes, dia);
-        let hoje = new Date();
-
-        let idade = hoje.getFullYear() - dataNasc.getFullYear();
-        let m = hoje.getMonth() - dataNasc.getMonth();
-        if (m < 0 || (m === 0 && hoje.getDate() - dataNasc.getDate() < 0)) {
-            idade--;
-        }
-
-        if (idade < 18) {
-            mostrarAlertaCustomizado("O curso é restrito para maiores de 18 anos.", "Atenção");
-            document.getElementById("data_nascimento").focus();
-            return;
-        }
-    }
-
-    const cpfInputVal = document.getElementById("cpf").value;
-    if (!validarCPF(cpfInputVal)) {
+    if (!validarCPF(document.getElementById("cpf").value)) {
         mostrarAlertaCustomizado("O CPF informado é inválido.", "Atenção");
-        return;
-    }
-
-    if (!form.checkValidity()) {
-        form.reportValidity();
         return;
     }
 
     const urlGoogleScript = "https://script.google.com/macros/s/AKfycbw1fV1LWuiY-et9A596QGbuKC4Mi-26X-GS5O-gKP-2jrnUOpZkxj9bRqKfTjVvnMbfTA/exec";
     const btnSubmit = document.querySelector(".btn-submit");
-    const textoOriginal = btnSubmit ? btnSubmit.textContent : "Enviar";
-    
-    if (btnSubmit) {
-        btnSubmit.textContent = "Enviando...";
-        btnSubmit.disabled = true;
-    }
+    btnSubmit.textContent = "Enviando...";
+    btnSubmit.disabled = true;
 
     const formData = new FormData(form);
-
+    
     let cpfInput = form.querySelector("#cpf");
     if (cpfInput) {
         let cpfValor = cpfInput.value.replace(/\D/g, "");
         if (cpfValor.length > 0) formData.set("cpf", "'" + cpfValor.padStart(11, "0"));
     }
-    
-    let inepInput = form.querySelector("#inep");
-    if (inepInput) {
-        inepInput.disabled = false;
-        let inepValor = inepInput.value.replace(/\D/g, "");
-        if (inepValor.length > 0) {
-            formData.set("inep", "'" + inepValor);
-        } else {
-            formData.set("inep", "");
-        }
-    }
 
-    fetch(urlGoogleScript, { 
-        method: "POST", 
-        body: formData 
-    })
+    fetch(urlGoogleScript, { method: "POST", body: formData })
     .then(response => response.json())
     .then(data => {
         if (data.result === "success") {
             mostrarAlertaCustomizado("Nome incluído na Lista de Espera com sucesso!", "Sucesso!");
             form.reset();
-            atualizarEstadoCamposEscola();
         } else {
             mostrarAlertaCustomizado("Erro ao salvar: " + (data.message || "Erro desconhecido"), "Erro");
         }
     })
-    .catch(error => {
-        console.error("Erro:", error);
-        mostrarAlertaCustomizado("Erro na conexão ao enviar os dados.", "Erro");
-    })
+    .catch(() => mostrarAlertaCustomizado("Erro na conexão ao enviar os dados.", "Erro"))
     .finally(() => {
-        if (btnSubmit) {
-            btnSubmit.textContent = textoOriginal;
-            btnSubmit.disabled = false;
-        }
+        btnSubmit.textContent = "Enviar";
+        btnSubmit.disabled = false;
     });
 });
 </script>
