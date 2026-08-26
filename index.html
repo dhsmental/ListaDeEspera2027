@@ -627,10 +627,17 @@ selectMunicipio.addEventListener("change", function() {
     const municipioSelecionado = selectMunicipio.value.normalize("NFD").replace(/[\u0300-\u036f]/g,"").trim().toUpperCase();
 
     const escolasFiltradas = EscolasMuniCSV.filter(item => {
-        const nomeEscola = item["escola_onde_atua"] || item["Escola"] || "";
-        const municipioCSV = (item["Município"] || item["Municipio"] || item["municipio"] || "").normalize("NFD").replace(/[\u0300-\u036f]/g,"").trim().toUpperCase();
-        const codMunCSV = String(item["codigo_municipio"] || item["Código Municipio"] || "").trim();
-        return !!nomeEscola.trim() && ((municipioCSV === municipioSelecionado) || (codMunCSV === codigoIbge) || (codMunCSV === codigoIbge6));
+        const itemNormalizado = {};
+        for (let chave in item) {
+            let chaveLimpa = chave.normalize("NFD").replace(/[\u0300-\u036f]/g,"").trim().toLowerCase();
+            itemNormalizado[chaveLimpa] = item[chave];
+        }
+
+        const nomeEscola = itemNormalizado["escola_onde_atua"] || itemNormalizado["escola"] || itemNormalizado["nome_escola"] || "";
+        const municipioCSV = (itemNormalizado["municipio"] || itemNormalizado["municipio_da_escola"] || "").normalize("NFD").replace(/[\u0300-\u036f]/g,"").trim().toUpperCase();
+        const codMunCSV = String(itemNormalizado["codigo_municipio"] || itemNormalizado["cod_municipio"] || "").trim();
+        
+        return !!String(nomeEscola).trim() && ((municipioCSV === municipioSelecionado) || (codMunCSV === codigoIbge) || (codMunCSV === codigoIbge6));
     });
 
     if (escolasFiltradas.length === 0) {
@@ -641,12 +648,23 @@ selectMunicipio.addEventListener("change", function() {
     }
 
     escolasFiltradas.forEach(item => {
-        const option = document.createElement("option");
-        const nomeEscola = item["escola_onde_atua"] || item["Escola"] || "";
-        let codigoInep = "";
+        const itemNormalizado = {};
         for (let chave in item) {
-            if (chave.toLowerCase().includes("inep")) { codigoInep = item[chave]; break; }
+            let chaveLimpa = chave.normalize("NFD").replace(/[\u0300-\u036f]/g,"").trim().toLowerCase();
+            itemNormalizado[chaveLimpa] = item[chave];
         }
+
+        const option = document.createElement("option");
+        const nomeEscola = itemNormalizado["escola_onde_atua"] || itemNormalizado["escola"] || itemNormalizado["nome_escola"] || "";
+        
+        let codigoInep = "";
+        for (let chave in itemNormalizado) {
+            if (chave.includes("inep")) { 
+                codigoInep = itemNormalizado[chave]; 
+                break; 
+            }
+        }
+        
         option.textContent = nomeEscola;
         option.value = nomeEscola;
         option.dataset.inep = codigoInep ? String(codigoInep).trim() : "";
