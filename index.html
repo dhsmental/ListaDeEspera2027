@@ -507,6 +507,14 @@ function validarCPF(cpf) {
     return resto === parseInt(cpf.substring(10, 11));
 }
 
+document.getElementById("cpf").addEventListener("blur", function() {
+    let cpfValor = this.value.trim();
+    if (cpfValor.length > 0 && !validarCPF(cpfValor)) {
+        mostrarAlertaCustomizado("O CPF informado é inválido.", "Atenção");
+        this.focus();
+    }
+});
+
 function validarEmail(email) {
     const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     return re.test(email);
