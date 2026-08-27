@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Lista de Espera - DHSM </title>
+  <title>Lista de Espera - DHSM</title>
   
   <!-- Importação da Biblioteca PapaParse -->
   <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
@@ -494,7 +494,7 @@ function fecharAlertaCustomizado() {
 
 function validarCPF(cpf) {
     cpf = String(cpf).replace(/[^\d]+/g, '');
-    if (cpf.length !== 11 || /^(\d){10}$/.test(cpf)) return false;
+    if (cpf.length !== 11 || /^(\d)\1{10}$/.test(cpf)) return false;
     let soma = 0, resto;
     for (let i = 1; i <= 9; i++) soma += parseInt(cpf.substring(i - 1, i)) * (11 - i);
     resto = (soma * 10) % 11;
@@ -531,13 +531,15 @@ function validarEmail(email) {
     return re.test(email);
 }
 
+// MÁSCARA RIGOROSA PARA DD/MM/AAAA (IMPEDE FORMATO MÊS/DIA/ANO)
 document.getElementById("data_nascimento").addEventListener("input", function (e) {
     let valor = e.target.value.replace(/\D/g, "");
     if (valor.length > 8) valor = valor.substring(0, 8);
-    if (valor.length > 4) {
+    
+    if (valor.length >= 5) {
         valor = valor.substring(0, 2) + "/" + valor.substring(2, 4) + "/" + valor.substring(4, 8);
-    } else if (valor.length > 2) {
-        valor = valor.substring(0, 2) + "/" + valor.substring(2, 4);
+    } else if (valor.length >= 3) {
+        valor = valor.substring(0, 2) + "/" + valor.substring(2);
     }
     e.target.value = valor;
 });
@@ -569,10 +571,25 @@ document.getElementById("data_nascimento").addEventListener("blur", function() {
     if (dataStr.length === 10) {
         let partes = dataStr.split("/");
         let dia = parseInt(partes[0], 10);
-        let mes = parseInt(partes[1], 10) - 1;
+        let mes = parseInt(partes[1], 10);
         let ano = parseInt(partes[2], 10);
 
-        let dataNasc = new Date(ano, mes, dia);
+        // Validação estrita de limites de mês e ano
+        if (mes < 1 || mes > 12 || ano < 1900 || ano > new Date().getFullYear()) {
+            mostrarAlertaCustomizado("Por favor, informe uma data de nascimento válida.", "Atenção");
+            this.focus();
+            return;
+        }
+
+        let dataNasc = new Date(ano, mes - 1, dia);
+        
+        // Verifica se a data é real (ex: evita 31/02 ou 30/02)
+        if (dataNasc.getFullYear() !== ano || dataNasc.getMonth() !== (mes - 1) || dataNasc.getDate() !== dia) {
+            mostrarAlertaCustomizado("A data informada não existe no calendário.", "Atenção");
+            this.focus();
+            return;
+        }
+
         let hoje = new Date();
 
         if (dataNasc > hoje) {
@@ -590,6 +607,13 @@ document.getElementById("data_nascimento").addEventListener("blur", function() {
         if (idade < 18) {
             mostrarAlertaCustomizado("O curso é restrito para maiores de 18 anos.", "Atenção");
             this.focus();
+            return;
+        }
+
+        if (idade > 110) {
+            mostrarAlertaCustomizado("Por favor, informe uma data de nascimento válida (idade máxima de 110 anos).", "Atenção");
+            this.focus();
+            return;
         }
     }
 });
@@ -643,17 +667,17 @@ selectMunicipio.addEventListener("change", function() {
     campoInep.readOnly = true;
     
     const codigoIbge6 = codigoIbge.substring(0, 6);
-    const municipioSelecionado = selectMunicipio.value.normalize("NFD").replace(/[̀-ͯ]/g,"").trim().toUpperCase();
+    const municipioSelecionado = selectMunicipio.value.normalize("NFD").replace(/[\u0300-\u036f]/g,"").trim().toUpperCase();
 
     const escolasFiltradas = EscolasMuniCSV.filter(item => {
         const itemNormalizado = {};
         for (let chave in item) {
-            let chaveLimpa = chave.normalize("NFD").replace(/[̀-ͯ]/g,"").trim().toLowerCase();
+            let chaveLimpa = chave.normalize("NFD").replace(/[\u0300-\u036f]/g,"").trim().toLowerCase();
             itemNormalizado[chaveLimpa] = item[chave];
         }
 
         const nomeEscola = itemNormalizado["escola_onde_atua"] || itemNormalizado["escola"] || itemNormalizado["nome_escola"] || "";
-        const municipioCSV = (itemNormalizado["municipio"] || itemNormalizado["municipio_da_escola"] || "").normalize("NFD").replace(/[̀-ͯ]/g,"").trim().toUpperCase();
+        const municipioCSV = (itemNormalizado["municipio"] || itemNormalizado["municipio_da_escola"] || "").normalize("NFD").replace(/[\u0300-\u036f]/g,"").trim().toUpperCase();
         const codMunCSV = String(itemNormalizado["codigo_municipio"] || itemNormalizado["cod_municipio"] || "").trim();
         
         return !!String(nomeEscola).trim() && ((municipioCSV === municipioSelecionado) || (codMunCSV === codigoIbge) || (codMunCSV === codigoIbge6));
@@ -669,7 +693,7 @@ selectMunicipio.addEventListener("change", function() {
     escolasFiltradas.forEach(item => {
         const itemNormalizado = {};
         for (let chave in item) {
-            let chaveLimpa = chave.normalize("NFD").replace(/[̀-ͯ]/g,"").trim().toLowerCase();
+            let chaveLimpa = chave.normalize("NFD").replace(/[\u0300-\u036f]/g,"").trim().toLowerCase();
             itemNormalizado[chaveLimpa] = item[chave];
         }
 
