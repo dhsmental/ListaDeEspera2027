@@ -494,7 +494,7 @@ function fecharAlertaCustomizado() {
 
 function validarCPF(cpf) {
     cpf = String(cpf).replace(/[^\d]+/g, '');
-    if (cpf.length !== 11 || /^(\d)\1{10}$/.test(cpf)) return false;
+    if (cpf.length !== 11 || /^(\d){10}$/.test(cpf)) return false;
     let soma = 0, resto;
     for (let i = 1; i <= 9; i++) soma += parseInt(cpf.substring(i - 1, i)) * (11 - i);
     resto = (soma * 10) % 11;
@@ -511,6 +511,17 @@ document.getElementById("cpf").addEventListener("blur", function() {
     let cpfValor = this.value.trim();
     if (cpfValor.length > 0 && !validarCPF(cpfValor)) {
         mostrarAlertaCustomizado("O CPF informado é inválido.", "Atenção");
+        this.focus();
+    }
+});
+
+// VALIDAÇÃO DO NOME COMPLETO (BLUR)
+document.getElementById("nome").addEventListener("blur", function() {
+    let nomeValor = this.value.trim();
+    let palavras = nomeValor.split(/\s+/);
+    
+    if (nomeValor.length > 0 && (palavras.length < 2 || nomeValor.length < 5)) {
+        mostrarAlertaCustomizado("Por favor, digite seu nome completo (nome e sobrenome).", "Atenção");
         this.focus();
     }
 });
@@ -632,17 +643,17 @@ selectMunicipio.addEventListener("change", function() {
     campoInep.readOnly = true;
     
     const codigoIbge6 = codigoIbge.substring(0, 6);
-    const municipioSelecionado = selectMunicipio.value.normalize("NFD").replace(/[\u0300-\u036f]/g,"").trim().toUpperCase();
+    const municipioSelecionado = selectMunicipio.value.normalize("NFD").replace(/[̀-ͯ]/g,"").trim().toUpperCase();
 
     const escolasFiltradas = EscolasMuniCSV.filter(item => {
         const itemNormalizado = {};
         for (let chave in item) {
-            let chaveLimpa = chave.normalize("NFD").replace(/[\u0300-\u036f]/g,"").trim().toLowerCase();
+            let chaveLimpa = chave.normalize("NFD").replace(/[̀-ͯ]/g,"").trim().toLowerCase();
             itemNormalizado[chaveLimpa] = item[chave];
         }
 
         const nomeEscola = itemNormalizado["escola_onde_atua"] || itemNormalizado["escola"] || itemNormalizado["nome_escola"] || "";
-        const municipioCSV = (itemNormalizado["municipio"] || itemNormalizado["municipio_da_escola"] || "").normalize("NFD").replace(/[\u0300-\u036f]/g,"").trim().toUpperCase();
+        const municipioCSV = (itemNormalizado["municipio"] || itemNormalizado["municipio_da_escola"] || "").normalize("NFD").replace(/[̀-ͯ]/g,"").trim().toUpperCase();
         const codMunCSV = String(itemNormalizado["codigo_municipio"] || itemNormalizado["cod_municipio"] || "").trim();
         
         return !!String(nomeEscola).trim() && ((municipioCSV === municipioSelecionado) || (codMunCSV === codigoIbge) || (codMunCSV === codigoIbge6));
@@ -658,7 +669,7 @@ selectMunicipio.addEventListener("change", function() {
     escolasFiltradas.forEach(item => {
         const itemNormalizado = {};
         for (let chave in item) {
-            let chaveLimpa = chave.normalize("NFD").replace(/[\u0300-\u036f]/g,"").trim().toLowerCase();
+            let chaveLimpa = chave.normalize("NFD").replace(/[̀-ͯ]/g,"").trim().toLowerCase();
             itemNormalizado[chaveLimpa] = item[chave];
         }
 
@@ -704,6 +715,15 @@ radiosPerfil.forEach(radio => radio.addEventListener("change", atualizarEstadoCa
 
 form.addEventListener("submit", function(event) {
     event.preventDefault();
+
+    // VALIDAÇÃO DO NOME COMPLETO NO SUBMIT
+    const nomeValor = document.getElementById("nome").value.trim();
+    const palavrasNome = nomeValor.split(/\s+/);
+    if (palavrasNome.length < 2 || nomeValor.length < 5) {
+        mostrarAlertaCustomizado("Por favor, informe seu nome completo (nome e sobrenome).", "Atenção");
+        document.getElementById("nome").focus();
+        return;
+    }
 
     const email = document.getElementById("email").value.trim();
     const confirmEmail = document.getElementById("confirm_email").value.trim();
