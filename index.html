@@ -452,6 +452,11 @@ const campoInep = document.getElementById("inep");
 const form = document.getElementById("formCursistas");
 const radiosPerfil = document.querySelectorAll('input[name="tipo_cursista"]');
 
+// Bloqueia Estado e Município logo no carregamento inicial da página
+selectUF.disabled = true;
+selectMunicipio.disabled = true;
+selectEscola.disabled = true;
+
 const CSV_POR_UF = {
   "AC": "https://docs.google.com/spreadsheets/d/e/2PACX-1vRnTs95n0C-DHcZGDos7332ndYM4_rx7ZqF_I8l6eRRoeI_uktPGq5FN-e-ByM6xA/pub?gid=919089555&single=true&output=csv",
   "AL": "https://docs.google.com/spreadsheets/d/e/2PACX-1vRnTs95n0C-DHcZGDos7332ndYM4_rx7ZqF_I8l6eRRoeI_uktPGq5FN-e-ByM6xA/pub?gid=1492906837&single=true&output=csv",
@@ -515,7 +520,6 @@ document.getElementById("cpf").addEventListener("blur", function() {
     }
 });
 
-// VALIDAÇÃO DO NOME COMPLETO (BLUR)
 document.getElementById("nome").addEventListener("blur", function() {
     let nomeValor = this.value.trim();
     let palavras = nomeValor.split(/\s+/);
@@ -531,7 +535,6 @@ function validarEmail(email) {
     return re.test(email);
 }
 
-// MÁSCARA RIGOROSA PARA DD/MM/AAAA (IMPEDE FORMATO MÊS/DIA/ANO)
 document.getElementById("data_nascimento").addEventListener("input", function (e) {
     let valor = e.target.value.replace(/\D/g, "");
     if (valor.length > 8) valor = valor.substring(0, 8);
@@ -544,7 +547,6 @@ document.getElementById("data_nascimento").addEventListener("input", function (e
     e.target.value = valor;
 });
 
-// MÁSCARA DE TELEFONE ATUALIZADA
 document.getElementById("telefone").addEventListener("input", function (e) {
     let valor = e.target.value.replace(/\D/g, "");
     if (valor.length > 11) valor = valor.substring(0, 11);
@@ -574,7 +576,6 @@ document.getElementById("data_nascimento").addEventListener("blur", function() {
         let mes = parseInt(partes[1], 10);
         let ano = parseInt(partes[2], 10);
 
-        // Validação estrita de limites de mês e ano
         if (mes < 1 || mes > 12 || ano < 1900 || ano > new Date().getFullYear()) {
             mostrarAlertaCustomizado("Por favor, informe uma data de nascimento válida.", "Atenção");
             this.focus();
@@ -583,7 +584,6 @@ document.getElementById("data_nascimento").addEventListener("blur", function() {
 
         let dataNasc = new Date(ano, mes - 1, dia);
         
-        // Verifica se a data é real (ex: evita 31/02 ou 30/02)
         if (dataNasc.getFullYear() !== ano || dataNasc.getMonth() !== (mes - 1) || dataNasc.getDate() !== dia) {
             mostrarAlertaCustomizado("A data informada não existe no calendário.", "Atenção");
             this.focus();
@@ -724,23 +724,37 @@ selectEscola.addEventListener("change", function() {
 function atualizarEstadoCamposEscola() {
     const perfilSelecionado = document.querySelector('input[name="tipo_cursista"]:checked');
     const tipo = perfilSelecionado ? perfilSelecionado.value : "";
-    if (!tipo) return;
-
+    
+    // Libera o estado assim que qualquer perfil for selecionado
     selectUF.disabled = false;
+
     if (tipo === "Profissional da Educação") {
         selectEscola.disabled = !selectMunicipio.value;
     } else {
+        selectEscola.innerHTML = '<option value="">Selecione primeiro o profissional da educação e o município</option>';
         selectEscola.disabled = true;
-        campoInep.disabled = true;
+        campoInep.value = "";
     }
 }
 
-radiosPerfil.forEach(radio => radio.addEventListener("change", atualizarEstadoCamposEscola));
+// Reseta e limpa os campos de localização/escola/inep sempre que trocar o perfil do rádio
+radiosPerfil.forEach(radio => radio.addEventListener("change", function() {
+    selectUF.value = "";
+    selectMunicipio.innerHTML = '<option value="">Selecione primeiro o estado</option>';
+    selectMunicipio.disabled = true;
+    
+    selectEscola.innerHTML = '<option value="">Selecione primeiro o profissional da educação e o município</option>';
+    selectEscola.disabled = true;
+    
+    campoInep.value = "";
+    document.getElementById("codigo_municipio").value = "";
+    
+    atualizarEstadoCamposEscola();
+}));
 
 form.addEventListener("submit", function(event) {
     event.preventDefault();
 
-    // VALIDAÇÃO DO NOME COMPLETO NO SUBMIT
     const nomeValor = document.getElementById("nome").value.trim();
     const palavrasNome = nomeValor.split(/\s+/);
     if (palavrasNome.length < 2 || nomeValor.length < 5) {
@@ -757,7 +771,6 @@ form.addEventListener("submit", function(event) {
         return;
     }
 
-    // VALIDAÇÃO DO TELEFONE NO SUBMIT
     const telefoneValor = document.getElementById("telefone").value.replace(/\D/g, "");
     const regexTelefone = /^\d{2}(9\d{8}|[2-8]\d{7})$/;
 
@@ -775,7 +788,6 @@ form.addEventListener("submit", function(event) {
         return;
     }
 
-    // Aplica a máscara 000.000.000-00 no CPF antes de enviar
     const cpfFormatado = cpfLimpo.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4");
 
     const urlGoogleScript = "https://script.google.com/macros/s/AKfycbw1fV1LWuiY-et9A596QGbuKC4Mi-26X-GS5O-gKP-2jrnUOpZkxj9bRqKfTjVvnMbfTA/exec";
@@ -784,8 +796,6 @@ form.addEventListener("submit", function(event) {
     btnSubmit.disabled = true;
 
     const formData = new FormData(form);
-    
-    // Garante que o CPF formatado e o INEP (caso esteja preenchido) vão no FormData
     formData.set("cpf", cpfFormatado);
     
     const inepValor = document.getElementById("inep").value;
@@ -799,6 +809,9 @@ form.addEventListener("submit", function(event) {
         if (data.result === "success") {
             mostrarAlertaCustomizado("Nome incluído na Lista de Espera com sucesso!", "Sucesso!");
             form.reset();
+            selectUF.disabled = true;
+            selectMunicipio.disabled = true;
+            selectEscola.disabled = true;
         } else {
             mostrarAlertaCustomizado("Erro ao salvar: " + (data.message || "Erro desconhecido"), "Erro");
         }
@@ -809,6 +822,5 @@ form.addEventListener("submit", function(event) {
         btnSubmit.disabled = false;
     });
 });
-</script>
-</body>
+</script></body>
 </html>
