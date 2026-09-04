@@ -415,7 +415,7 @@
 
     <div class="form-group">
       <label for="inep">Código INEP da Escola: </label>
-      <input type="text" id="inep" name="inep" readonly disabled placeholder="Preenchido automaticamente">
+      <input type="text" id="inep" name="inep" readonly placeholder="Preenchido automaticamente">
     </div>
 
     <input type="hidden" id="codigo_municipio" name="codigo_municipio">
@@ -767,10 +767,16 @@ form.addEventListener("submit", function(event) {
         return;
     }
 
-    if (!validarCPF(document.getElementById("cpf").value)) {
+    const cpfInput = document.getElementById("cpf");
+    let cpfLimpo = cpfInput.value.replace(/\D/g, "").padStart(11, "0");
+    if (!validarCPF(cpfLimpo)) {
         mostrarAlertaCustomizado("O CPF informado é inválido.", "Atenção");
+        cpfInput.focus();
         return;
     }
+
+    // Aplica a máscara 000.000.000-00 no CPF antes de enviar
+    const cpfFormatado = cpfLimpo.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4");
 
     const urlGoogleScript = "https://script.google.com/macros/s/AKfycbw1fV1LWuiY-et9A596QGbuKC4Mi-26X-GS5O-gKP-2jrnUOpZkxj9bRqKfTjVvnMbfTA/exec";
     const btnSubmit = document.querySelector(".btn-submit");
@@ -779,10 +785,12 @@ form.addEventListener("submit", function(event) {
 
     const formData = new FormData(form);
     
-    let cpfInput = form.querySelector("#cpf");
-    if (cpfInput) {
-        let cpfValor = cpfInput.value.replace(/\D/g, "");
-        if (cpfValor.length > 0) formData.set("cpf", "'" + cpfValor.padStart(11, "0"));
+    // Garante que o CPF formatado e o INEP (caso esteja preenchido) vão no FormData
+    formData.set("cpf", cpfFormatado);
+    
+    const inepValor = document.getElementById("inep").value;
+    if (inepValor) {
+        formData.set("inep", inepValor);
     }
 
     fetch(urlGoogleScript, { method: "POST", body: formData })
